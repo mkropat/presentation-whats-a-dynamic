@@ -31,7 +31,7 @@ Console.WriteLine(blob.foo);
       </section>
       <section>
         <h4>Nothing dynamic about anonymous types</h4>
-        <pre class="language-csharp">internal sealed class
+        <pre style="font-size: 80%"><code class="language-csharp">internal sealed class
   &lt;&gt;f__AnonymousType0<&lt;Foo&gt;j__TPar>
 {
   private readonly &lt;Foo&gt;j__TPar &lt;Foo&gt;i__Field;
@@ -44,7 +44,8 @@ Console.WriteLine(blob.foo);
     }
   }
   […]
-  </pre>
+}
+</code></pre>
       </section>
       <section>
         <p class="bullet">As for the others...</p>
@@ -176,6 +177,46 @@ Console.WriteLine(mailbox.FullName());
           <li class="bullet">IronPython / IronRuby</li>
           <li class="bullet">REST API</li>
         </ul>
+      </section>
+      <section>
+        <h3>Real World Example</h3>
+        <pre style="font-size: 50%"><code class="language-csharp">public async Task&lt;IEnumerable&lt;T>> GetAll&lt;T>(
+    string path, string pagedProperty, int pageSize=50)
+{
+    var result = new List&lt;T>();
+    
+    var offset = 0;
+    dynamic page;
+    do
+    {
+        var queryString = string.Format(
+            "offset={0}&size={1}", offset, pageSize);
+        page = await Get(
+            JoinPathWithQueryString(path, queryString));
+            
+        result.AddRange(GetEnumerableProperty&lt;T>(
+            page, pagedProperty));
+            
+        offset += pageSize;
+    } while (offset &lt; page.total);
+    
+    return result;
+}</code></pre>
+      </section>
+      <section>
+        <h3>Real World Example (cont.)</h3>
+        <pre style="font-size: 75%"><code class="language-csharp">static IEnumerable&lt;T> GetEnumerableProperty&lt;T>(
+    ExpandoObject obj, string property)
+{
+    var asDict = (IDictionary&lt;string, object>)obj;
+    var items = (IEnumerable&lt;object>)asDict[property];
+    foreach (var item in items)
+        yield return item is T
+            ? (T)item
+            : JsonConvert.DeserializeObject&lt;T>(
+              JsonConvert.SerializeObject(item));
+}
+</code></pre>
       </section>
       <section>
         <h3 class="bullet">Subtleties of dynamic</h3>
