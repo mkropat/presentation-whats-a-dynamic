@@ -41,20 +41,22 @@ html
 
       section
         h4 Nothing dynamic about anonymous types
-        pre.language-csharp.
-          internal sealed class
-            &lt;&gt;f__AnonymousType0<&lt;Foo&gt;j__TPar>
-          {
-            private readonly &lt;Foo&gt;j__TPar &lt;Foo&gt;i__Field;
-
-            public &lt;Foo&gt;j__TPar Foo
+        pre(style='font-size: 80%')
+          code.language-csharp.
+            internal sealed class
+              &lt;&gt;f__AnonymousType0<&lt;Foo&gt;j__TPar>
             {
-              get
+              private readonly &lt;Foo&gt;j__TPar &lt;Foo&gt;i__Field;
+
+              public &lt;Foo&gt;j__TPar Foo
               {
-                return this.&lt;Foo&gt;i__Field;
+                get
+                {
+                  return this.&lt;Foo&gt;i__Field;
+                }
               }
+              […]
             }
-            […]
 
       section
         p.bullet As for the others...
@@ -197,6 +199,48 @@ html
           li.bullet COM
           li.bullet IronPython / IronRuby
           li.bullet REST API
+
+      section
+        h3 Real World Example
+        pre(style='font-size: 50%')
+          code.language-csharp.
+            public async Task&lt;IEnumerable&lt;T>> GetAll&lt;T>(
+                string path, string pagedProperty, int pageSize=50)
+            {
+                var result = new List&lt;T>();
+
+                var offset = 0;
+                dynamic page;
+                do
+                {
+                    var queryString = string.Format(
+                        "offset={0}&size={1}", offset, pageSize);
+                    page = await Get(
+                        JoinPathWithQueryString(path, queryString));
+
+                    result.AddRange(GetEnumerableProperty&lt;T>(
+                        page, pagedProperty));
+
+                    offset += pageSize;
+                } while (offset &lt; page.total);
+
+                return result;
+            }
+      section
+        h3 Real World Example (cont.)
+        pre(style='font-size: 75%')
+          code.language-csharp.
+            static IEnumerable&lt;T> GetEnumerableProperty&lt;T>(
+                ExpandoObject obj, string property)
+            {
+                var asDict = (IDictionary&lt;string, object>)obj;
+                var items = (IEnumerable&lt;object>)asDict[property];
+                foreach (var item in items)
+                    yield return item is T
+                        ? (T)item
+                        : JsonConvert.DeserializeObject&lt;T>(
+                          JsonConvert.SerializeObject(item));
+            }
 
       section
         h3.bullet Subtleties of dynamic
