@@ -1,0 +1,226 @@
+doctype html
+html
+  head
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1, maximum-scale=1')
+    title What's a dynamic?
+
+    link(rel='stylesheet', type='text/css', href='build/build.css')
+
+  body
+
+    article
+
+      section
+        h1 What's a dynamic?
+
+      section
+        h3 The <tt>dynamic</tt> keyword
+        pre
+          code.language-csharp.
+            dynamic blob = JsonConvert.DeserializeObject(
+                "{ foo: 123 }");
+            Console.WriteLine(blob.foo);
+
+      section
+        h3 Which of these creates a <tt>dynamic</tt> object?
+
+        pre
+          code.language-csharp.
+            new DynamicObject();
+
+        pre
+          code.language-csharp.
+            new ExpandoObject();
+
+        pre
+          code.language-csharp.
+            new {
+              Foo = 123
+            };
+
+      section
+        h4 Nothing dynamic about anonymous types
+        pre.language-csharp.
+          internal sealed class
+            &lt;&gt;f__AnonymousType0<&lt;Foo&gt;j__TPar>
+          {
+            private readonly &lt;Foo&gt;j__TPar &lt;Foo&gt;i__Field;
+
+            public &lt;Foo&gt;j__TPar Foo
+            {
+              get
+              {
+                return this.&lt;Foo&gt;i__Field;
+              }
+            }
+            […]
+
+      section
+        p.bullet As for the others...
+        h2.bullet Trick Question
+        p.bullet It's not incorrect to call an instance of <tt>DynamicObject</tt>, etc. a dynamic object
+        p.bullet Just that it's the wrong way to think about it
+
+      section
+        h3 What is the CLR type of the following declarations?
+        pre
+          code.language-csharp.
+            public static void DeclarationTest()
+            {
+                var varInstance = "Hello, world!";
+                dynamic dynamicInstance = "Hello, world!";
+                object objectInstance = "Hello, world!";
+                IEnumerable ienumInstance = "Hello, world!";
+            }
+
+      section
+        pre(style='font-size: 11pt')
+          code.language-il.
+            .method […] void DeclarationTest() […]
+            {
+              .maxstack  1
+              .locals init ([0] string varInstance,
+                       [1] object dynamicInstance,
+                       [2] object objectInstance,
+                       [3] class […]IEnumerable ienumInstance)
+              IL_0000:  nop
+              IL_0001:  ldstr      "Hello, world!"
+              IL_0006:  stloc.0
+              IL_0007:  ldstr      "Hello, world!"
+              IL_000c:  stloc.1
+              IL_000d:  ldstr      "Hello, world!"
+              […]
+
+      section
+        h3.bullet Types are about compile-time
+        p.bullet (Mostly)
+        h3.bullet(style='margin-top: 30px;') <tt>dynamic</tt> is about run-time
+
+      section
+        h3 Example from the beginning:
+        pre.bullet
+          code.language-csharp.
+            dynamic blob = JsonConvert.DeserializeObject(
+                "{ foo: 123 }");
+            Console.WriteLine(blob.foo);
+        p.bullet.
+          This works because the <tt>foo</tt> member isn't looked up until
+          runtime
+
+      section
+        h2 Let's talk about <tt>ExpandoObject</tt>
+
+      section
+        h3 Dynamic vs Static Usage
+        p
+          img(src='images/expando-object-usage.png')
+
+      section
+        code.language-csharp.
+          public sealed class ExpandoObject :
+              IDynamicMetaObjectProvider,
+              IDictionary&lt;string, object&gt;,
+              ICollection&lt;KeyValuePair&lt;string, object&gt;&gt;,
+              IEnumerable&lt;KeyValuePair&lt;string, object&gt;&gt;,
+              IEnumerable,
+              INotifyPropertyChanged
+          {
+              public ExpandoObject();
+          }
+
+      section
+        h4.bullet Why not just use <tt>IDictionary&lt;string, object&gt;</tt>?
+        pre.bullet
+          code.language-csharp.
+            var mailbox = new Dictionary&lt;string,object>();
+            mailbox["displayName"] = "Jane Doe";
+
+            var contactInfo = new Dictionary&lt;string,object>();
+            contactInfo["city"] = "Blacksburg";
+            mailbox["contactInfo"] = contactInfo;
+
+        pre(style='display: none')
+          code.language-csharp.
+            var mailbox = new Dictionary&lt;string,object&gt;() {
+                { "displayName", "Jane Doe" },
+                {
+                    "contactInfo", new Dictionary&lt;string,object&gt;() {
+                        { "city", "Blacksburg" },
+                    }
+                },
+            };
+
+      section
+        h4 Accessing Nested Dictionaries
+        pre
+          code.language-csharp.
+            var contactInfo = (IDictionary&lt;string, object&gt;)
+              mailbox["contactInfo"]);
+            var city = contactInfo["city"] as string;
+            Console.WriteLine(city);
+
+      section
+        h4 Accessing Nested ExpandoObject
+        pre.bullet
+          code.language-csharp.
+            dynamic mailbox = new ExpandoObject();
+            mailbox.displayName = "Jane Doe";
+            mailbox.contactInfo = new ExpandoObject();
+            mailbox.contactInfo.city = "Blacksburg";
+
+        pre.bullet
+          code.language-csharp.
+            Console.WriteLine(mailbox.contactInfo.city);
+
+      section
+        h3 Can assign methods
+        pre
+          code.language-csharp.
+            dynamic mailbox = new ExpandoObject();
+            mailbox.FullName = new Func&lt;string&gt;(
+              () => mailbox.First + " " + mailbox.Last);
+            mailbox.First = "Jane";
+            mailbox.Last = "Doe";
+
+            Console.WriteLine(mailbox.FullName());
+
+      section
+        h3.bullet Methods Possibly More Useful On <tt>DynamicObject</tt>
+        p.bullet <tt>ExpandoObject</tt> = property bag you add to at runtime
+        p.bullet <tt>DynamicObject</tt> = class you inherit from to easily implement <tt>IDynamicMetaObjectProvider</tt>
+
+      section
+        h3.bullet Uses for <tt>dynamic</tt>
+        ul
+          li.bullet Browser DOM
+          li.bullet COM
+          li.bullet IronPython / IronRuby
+          li.bullet REST API
+
+      section
+        h3.bullet Subtleties of dynamic
+        li.bullet Can't reflect on dynamic members
+        li.bullet Extension methods don't work
+
+      section
+        h3.bullet dynamic vs Reflection
+        ol
+          li.bullet
+            p(style='margin-left: 10px') dynamic uses Reflection underneath the hood
+            p.bullet(style='margin-left: 20px') (dynamic member lookups are cached for performance)
+          li.bullet
+            p(style='margin-left: 10px') dynamic does whatever C# would do but at runtime
+            p.bullet(style='margin-left: 20px') (for example: dynamic respects private, protected, etc.)
+          li.bullet dynamic expresses business logic
+          li.bullet Reflection expresses mechanism
+
+      section
+        h3 Credits
+        ul
+          li
+            a(href='http://stackoverflow.com/a/4649596/27581') http://stackoverflow.com/a/4649596/27581
+          li
+            a(href='http://stackoverflow.com/q/3565481/27581') http://stackoverflow.com/q/3565481/27581
+
+    script(src='build/build.js')
